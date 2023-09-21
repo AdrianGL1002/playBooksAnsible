@@ -1,0 +1,70 @@
+---
+- name: Configurando mysql
+  hosts: all
+  become: true
+  vars:
+    mysql_root_password: password
+  tasks:
+    - name: Instalar paquetes necesarios
+      apt:
+        name: ['apache2', 'mysql-server', 'python3-pymysql', 'php', 'php-mysql', 'libapache2-mod-php']
+
+    - name: start mysql
+      service:
+        name: mysql
+        state: started
+        enabled: true
+
+    - name: Update password in all users
+      mysql_user:
+        name: root
+        host: "{{ item }}"
+        password: "{{ mysql_root_password }}"
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        state: present
+        check_implicit_admin: yes
+        priv: "*.*:ALL,GRANT"
+      with_items:
+      - "{{ ansible_hostname }}"
+      - 127.0.0.1
+      - ::1
+      - localhost
+      become: yes
+
+    - name: Removes all anonymous user accounts
+      mysql_user:
+        name: ''
+        host_all: yes
+        state: absent
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+
+    - name: Removes the MySQL test database
+      mysql_db:
+        name: test
+        state: absent
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+
+
+    - name: create database
+      mysql_db:
+        name: prueba
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+
+    - name: add sample data to database
+      copy:
+        src: dump.sql
+        dest: /tmp/dump.sql
+
+    - name: insert sample data into database
+      mysql_db:
+        name: prueba
+        state: import
+        target: /tmp/dump.sql
+        login_user: root
+        login_password: "{{ mysql_root_password }}"

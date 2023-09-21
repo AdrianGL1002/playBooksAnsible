@@ -1,0 +1,46 @@
+---
+- name: Configurando mysql
+  hosts: all
+  become: true
+  tasks:
+    - name: Clone page Registros
+      git: 
+        repo: 'https://github.com/AdrianGL1002/Ejemplo_pagina_despliegue.git'
+        dest: /var/www/html/registros
+
+    - name: Set up Apache virtualhost to app
+      template:
+        src: "/etc/apache2/sites-available/000-default.conf"
+        dest: "/etc/apache2/sites-available/formulario.conf"
+
+    - name: "Adding ports 8080 and 8081 to ports.conf"
+      blockinfile:
+        name: /etc/apache2/ports.conf 
+        block: | 
+          Listen 8080
+          Listen 8081
+        marker: "#listens" 
+
+    - name: Enable new site Registros
+      shell: /usr/sbin/a2ensite formulario.conf
+
+    - name: Disable default Apache site
+      shell: /usr/sbin/a2dissite 000-default.conf
+
+    - name: Change port to 8080 in /etc/apache2/site-enabled/formulario.conf
+      lineinfile:
+        path: /etc/apache2/sites-enabled/formulario.conf
+        regexp: '^<VirtualHost \*:80>'
+        line: '<VirtualHost \*:8080>'
+
+    - name: Change port root path
+      lineinfile:
+        path: /etc/apache2/sites-enabled/formulario.conf
+        regexp: '^DocumentRoot /var/www/html'
+        line: 'DocumentRoot /var/www/html/registros'
+
+
+    - name: Restart Apache
+      service:
+        name: apache2
+        state: restarted

@@ -1,0 +1,36 @@
+---
+- name: Configurando mysql
+  hosts: all
+  become: true
+  tasks:
+    - name: Clone page Registros
+      git: 
+        repo: 'https://github.com/AdrianGL1002/PaginaPersonaDespliiegue.git'
+        dest: /var/www/personalPage
+
+    - name: Set up Apache virtualhost to app
+      template:
+        src: "/etc/apache2/sites-available/000-default.conf"
+        dest: "/etc/apache2/sites-available/personal.conf"
+
+    - name: Enable new site Registros
+      shell: /usr/sbin/a2ensite personal.conf
+
+    - name: Change port to 8080 in /etc/apache2/site-enabled/personal.conf
+      lineinfile:
+        path: /etc/apache2/sites-enabled/personal.conf
+        regexp: '^<VirtualHost \*:80>'
+        line: '<VirtualHost \*:8081>'
+
+    - name: Change port root path
+      lineinfile:
+        path: /etc/apache2/sites-enabled/personal.conf
+        regexp: '^DocumentRoot /var/www/html'
+        line: 'DocumentRoot /var/www/personalPage'
+
+
+    - name: Restart Apache
+      service:
+        name: apache2
+        state: restarted
+
